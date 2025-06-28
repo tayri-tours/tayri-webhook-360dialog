@@ -10,33 +10,32 @@ app.use(express.json());
 // טוקן אימות webhook
 const VERIFY_TOKEN = "tayri_secret_token";
 
-// מפתח OpenAI
+// OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 // 360dialog
 const WHATSAPP_API_URL = "https://waba.360dialog.io/v1/messages";
-const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN; // שים בקובץ .env
+const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 
-// system prompt
+// system prompt — מנהל שיחה
 const systemPrompt = `
-אתה סוכן הזמנות חכם לשירותי נסיעות.
-המטרה שלך היא לאסוף מהלקוח את כל פרטי ההזמנה, כולל:
-- תאריך הנסיעה
+אתה סוכן הזמנות חכם לשירותי הסעות.
+המטרה שלך היא לאסוף מהלקוח את כל פרטי ההזמנה:
+- תאריך
 - שעה
 - כתובת איסוף
 - כתובת יעד
 - מספר נוסעים
 - מספר מזוודות
 
-אם חסר לך פרט, תשאל אותו בצורה נעימה ומקצועית, בעברית או בשפת הלקוח.
-ענה בכל שאלה אחרת של הלקוח אם תוכל, אבל תמיד תחזור לבקש את הפרטים החסרים עד שיש לך את כולם.
-כשכל הפרטים בידך, סכם אותם בנוסח ברור.
-אל תמציא תשובות.
+אם חסר פרט, תשאל אותו בצורה ידידותית בשפת הלקוח.
+כאשר כל הפרטים בידך, סכם אותם ללקוח.
+אל תנחש.
 `
 
-// אימות webhook
+// שלב 1: אימות webhook
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -50,7 +49,7 @@ app.get("/webhook", (req, res) => {
   }
 });
 
-// POST - הודעות
+// שלב 2: קבלת הודעות
 app.post("/webhook", async (req, res) => {
   const body = req.body;
   console.log("New webhook event:", JSON.stringify(body, null, 2));
@@ -65,7 +64,7 @@ app.post("/webhook", async (req, res) => {
         model: "gpt-4o",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: message },
+          { role: "user", content: message }
         ],
         temperature: 0.3,
       });
@@ -77,13 +76,13 @@ app.post("/webhook", async (req, res) => {
       await sendReplyToCustomer(from, gptReply);
     }
   } catch (err) {
-    console.error("Error:", err.response?.data || err);
+    console.error("❌ Error:", err.response?.data || err);
   }
 
-  res.sendStatus(200); // תמיד מחזירים 200OK
+  res.sendStatus(200);
 });
 
-// פונקציה לשלוח תשובה ללקוח
+// פונקציה לשלוח ללקוח
 async function sendReplyToCustomer(to, text) {
   try {
     const headers = {
@@ -104,8 +103,9 @@ async function sendReplyToCustomer(to, text) {
   }
 }
 
-// הפעלה
+// הפעלת השרת
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Webhook server running on port ${PORT}`);
 });
+
